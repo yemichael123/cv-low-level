@@ -18,20 +18,20 @@ def adjust_movement(x, y) :
 	speed.angular.z = y
 	speedPub.publish(speed)
 
-def velocity_control(predictionValue):
-	if (predictionValue > movementPredThres):
-		adjustMovement(4, 0)
-	else:
-		adjustMovement(0, 4)
+def velocity_control(moveForward):
+	# if (predictionValue > movementPredThres):
+	# 	adjustMovement(4, 0)
+	# else:
+	# 	adjustMovement(0, 4)
+	adjustMovement(4 if moveForward else 0, 0 if moveForward else 4)
 
 def main():
 	# may have to replace while(true) with some rate limit
 	moveForwardOld = getPredVal() > movementPresThres
 	while(True):
-		predVal = getPredVal()
-		moveForwardNew = predVal > movementPresThres
+		moveForwardNew = getPredVal() > movementPresThres
 		if (moveForwardOld != moveForwardNew):
-			velocity_control(predVal)
+			velocity_control(moveForwardNew)
 		moveForwardOld = moveForwardNew
 
 if __name__ == "__main__":
