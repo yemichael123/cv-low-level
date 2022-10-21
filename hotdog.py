@@ -5,22 +5,34 @@ from geometry_msgs.msg import Point, Twist
 from math import atan2
 
 global movementPredThres = 50
+global speedPub = rospy.Publisher("/jackal_velocity_control/cmd_vel", Twist, queue_size = 1)
+global speed = Twist()
 
 
-getPredVal():
+def getPredVal():
 
 
 
+def adjust_movement(x, y) :
+	speed.linear.x = x
+	speed.angular.z = y
+	speedPub.publish(speed)
 
-velocity_control(predictionValue):
-	pub = rospy.Publisher("/jackal_velocity_control/cmd_vel", Twist, queue_size = 1)
-	speed = Twist()
+def velocity_control(predictionValue):
 	if (predictionValue > movementPredThres):
-		speed.linear.x = 4
-		speed.angular.z = 0 
+		adjustMovement(4, 0)
 	else:
-		speed.linear.x = 0
-		speed.angular.z = 4
-	pub.publish(speed)
+		adjustMovement(0, 4)
 
-		
+def main():
+	# may have to replace while(true) with some rate limit
+	moveForwardOld = getPredVal() > movementPresThres
+	while(True):
+		predVal = getPredVal()
+		moveForwardNew = predVal > movementPresThres
+		if (moveForwardOld != moveForwardNew):
+			velocity_control(predVal)
+		moveForwardOld = moveForwardNew
+
+if __name__ == "__main__":
+    main()
