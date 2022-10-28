@@ -10,6 +10,14 @@ x = 0.0
 y = 0.0
 theta = 0.0
 
+coordinates = [[0,3], [1,2], [0,0]]
+
+def newCoordinate():
+    x, y = coordinates[0][0], coordinates[0][1]
+    if (coordinates.length() != 1):
+        coordinates = coordinates[1:]
+    return x, y
+
 def resetOdom():
     rospy.init_node('reset_odom')
 
@@ -43,8 +51,8 @@ def drive():
     r = rospy.Rate(4)
 
     goal = Point()
-    goal.x = 0
-    goal.y = 5
+    goal.x, goal.y = newCoordinate()
+
 
     while not rospy.is_shutdown():
         inc_x = goal.x - x
@@ -62,9 +70,10 @@ def drive():
             speed.linear.x = 0.5
             speed.angular.z = 0.0
 
-        if (abs(inc_x - x) < .5) and (abs(inc_y - y) < .5):
+        if (abs(inc_x - x) < .1) and (abs(inc_y - y) < .1):
             speed.linear.x = 0
             speed.angular.z = 0
+            goal.x, goal.y = newCoordinate()
 
         pub.publish(speed)
         r.sleep()
