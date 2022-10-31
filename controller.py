@@ -1,7 +1,7 @@
 import rospy
-from nav_msgs.msg import Odometry
+from nav_msgs.msg import Odometry, Path
 from tf.transformations import euler_from_quaternion
-from geometry_msgs.msg import Point, Twist
+from geometry_msgs.msg import Point, Twist, PoseStamped
 from math import atan2
 from std_msgs.msg import Empty
 from time import time
@@ -13,6 +13,19 @@ theta = 0.0
 coordinates = [[0,3], [1, 2], [0,0]]
 
 resetSub = None
+
+
+path = Path()
+
+def odom_cb(data):
+    global path
+    path_pub = rospy.Publisher('/path', Path, queue_size=10)
+    path.header = data.header
+    pose = PoseStamped()
+    pose.header = data.header
+    pose.pose = data.pose.pose
+    path.poses.append(pose)
+    path_pub.publish(path)
 
 def newCoordinate():
     global coordinates
@@ -69,6 +82,7 @@ def drive():
     
     sub = rospy.Subscriber("/odometry/filtered", Odometry, newOdom)
     pub = rospy.Publisher("/jackal_velocity_controller/cmd_vel", Twist, queue_size = 1)
+    odom_sub = rospy.Subscriber('/odometry/filtered', Odometry, odom_cb)
 
     speed = Twist()
 
