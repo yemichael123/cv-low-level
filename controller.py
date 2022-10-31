@@ -10,23 +10,41 @@ x = 0.0
 y = 0.0
 theta = 0.0
 
-coordinates = [[0,3], [1,2], [0,0]]
+coordinates = [[0,3], [1, 2], [0,0]]
+
+resetSub = None
 
 def newCoordinate():
+    global coordinates
     x, y = coordinates[0][0], coordinates[0][1]
-    if (coordinates.length() != 1):
+    if (len(coordinates) != 1):
         coordinates = coordinates[1:]
     return x, y
 
-def resetOdom():
-    rospy.init_node('reset_odom')
+def resetOdom(msg):
+    # global newSub
+    reset_odom = rospy.Publisher('/jackal_velocity_controller/odom', Odometry, queue_size=10)
+    # reset_odom = rospy.Publisher('/jackal_velocity_controller/odom', Empty, queue_size=10)
 
-    reset_odom = rospy.Publisher('/odometry/filtered', Empty, queue_size=10)
+    # msg.pose.pose.position.x, msg.pose.pose.position.y, msg.pose.pose.position.z = 0, 0, 0
+    # msg.pose.pose.orientation.x, msg.pose.pose.orientation.y, msg.pose.pose.orientation.z, msg.pose.pose.orientation.w = 0, 0, 0, 0
+    
+    odom = Odometry()
+    odom.pose.pose.position.x = 0
+    odom.pose.pose.position.y = 0
+    odom.pose.pose.position.z = 0
+    odom.pose.pose.orientation.x = 0
+    odom.pose.pose.orientation.y = 0
+    odom.pose.pose.orientation.z = 0
+    odom.pose.pose.orientation.w = 0
 
     timer = time()
     while time() - timer < 0.25:
-        reset_odom.publish(Empty())
-
+        print(str(timer) + " " + str(time())) 
+        print("odometry/filtered as empty...")
+        reset_odom.publish(odom)
+    print("done")
+    # newSub.unregister()
     
 def newOdom(msg):
     # print("in odom")
@@ -41,45 +59,57 @@ def newOdom(msg):
     (roll, pitch, theta) = euler_from_quaternion([rot_q.x, rot_q.y, rot_q.z, rot_q.w])
 
 def drive():
+    # rospy.init_node("speed_controller")
+
     rospy.init_node("speed_controller")
 
+    # resetOdom("df")
+    # global resetSub
+    # resetSub = rospy.Subscriber("/odometry/filtered", Odometry, resetOdom) 
+    
     sub = rospy.Subscriber("/odometry/filtered", Odometry, newOdom)
     pub = rospy.Publisher("/jackal_velocity_controller/cmd_vel", Twist, queue_size = 1)
 
     speed = Twist()
 
-    r = rospy.Rate(4)
+    r = rospy.Rate(40)
 
     goal = Point()
     goal.x, goal.y = newCoordinate()
 
+    
 
     while not rospy.is_shutdown():
         inc_x = goal.x - x
         inc_y = goal.y - y
-
+        
+        print("x: " + str(goal.x))
+        print("y: " + str(goal.y))
         angle_to_goal = atan2(inc_y, inc_x)
 
-        if angle_to_goal - theta > 0.1:
+        if angle_to_goal - theta > 0.01:
+            print("turning CW")
             speed.linear.x = 0.0
             speed.angular.z = 0.3
-        elif angle_to_goal - theta < -0.1:
+        elif angle_to_goal - theta < -0.01:
+            print("turning CCW")
             speed.linear.x = 0.0
             speed.angular.z = -0.3
         else:
+            print("moving forward")
             speed.linear.x = 0.5
             speed.angular.z = 0.0
 
-        if (abs(inc_x - x) < .1) and (abs(inc_y - y) < .1):
+        if (abs(inc_x) < .1) and (abs(inc_y) < .1):
+            print("stopping...")
             speed.linear.x = 0
             speed.angular.z = 0
             goal.x, goal.y = newCoordinate()
 
         pub.publish(speed)
-        r.sleep()
+
 
 def main():
-    reset_odom()
     drive()
 
 if __name__ == "__main__":
