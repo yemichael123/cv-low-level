@@ -1,4 +1,5 @@
 import rospy
+import numpy as np
 from nav_msgs.msg import Odometry, Path
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Point, Twist, PoseStamped
@@ -10,12 +11,27 @@ x = 0.0
 y = 0.0
 theta = 0.0
 
-coordinates = [[0,3], [1, 2], [0,0]]
+coordinates = [[0,3], [3, 3], [3,0], [0, 0]]
 
 resetSub = None
 
 
 path = Path()
+
+def generateGraphCoordinates(graph):
+    global coordinates
+    coordinates = []
+
+    if (graph == "sine"):
+        for i in range(30):
+            coordinates.append([i, np.sin(i)])
+    elif (graph == "tan"):
+        for i in range(60):
+            coordinates.append([i / 2, np.tan(i)])
+    elif (graph == "sine incr"):
+        for i in range(200):
+            coordinates.append([i / 4, np.sin(i) * i / 2])
+
 
 def odom_cb(data):
     global path
@@ -97,21 +113,26 @@ def drive():
         inc_x = goal.x - x
         inc_y = goal.y - y
         
-        print("x: " + str(goal.x))
-        print("y: " + str(goal.y))
-        angle_to_goal = atan2(inc_y, inc_x)
+        print("goal x: " + str(goal.x))
+        print("goal y: " + str(goal.y))
+        print("x: " + str(x))
+        print("y: " + str(y)) 
 
-        if angle_to_goal - theta > 0.01:
+        angle_to_goal = atan2(inc_y, inc_x)
+        print("angle_to_goal: " + str(angle_to_goal))
+        print("theta: " + str(theta))
+
+        if angle_to_goal - theta > 0.1:
             print("turning CW")
             speed.linear.x = 0.0
-            speed.angular.z = 0.3
-        elif angle_to_goal - theta < -0.01:
+            speed.angular.z = 0.2
+        elif angle_to_goal - theta < -0.1:
             print("turning CCW")
             speed.linear.x = 0.0
-            speed.angular.z = -0.3
+            speed.angular.z = -0.2
         else:
             print("moving forward")
-            speed.linear.x = 0.5
+            speed.linear.x = 9
             speed.angular.z = 0.0
 
         if (abs(inc_x) < .1) and (abs(inc_y) < .1):
@@ -119,11 +140,13 @@ def drive():
             speed.linear.x = 0
             speed.angular.z = 0
             goal.x, goal.y = newCoordinate()
-
+        
+        
         pub.publish(speed)
-
+        r.sleep()
 
 def main():
+    # generateGraphCoordinates("sine incr")
     drive()
 
 if __name__ == "__main__":
