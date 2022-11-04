@@ -6,7 +6,8 @@ from geometry_msgs.msg import Point, Twist, PoseStamped
 from math import atan2
 from std_msgs.msg import Empty
 from time import time
-from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
+
 import actionlib
 
 x = 0.0
@@ -17,10 +18,13 @@ coordinates = [[0,3], [3, 3], [3,0], [0, 0]]
 
 resetSub = None
 
-
 path = Path()
 
+
 def generateGraphCoordinates(graph):
+    """
+    Generates graph coordinates for testing
+    """
     global coordinates
     coordinates = []
 
@@ -36,6 +40,9 @@ def generateGraphCoordinates(graph):
 
 
 def odom_cb(data):
+    """
+    Writes odometry position data to /path topic for rviz visualization
+    """
     global path
     path_pub = rospy.Publisher('/path', Path, queue_size=10)
     path.header = data.header
@@ -46,6 +53,9 @@ def odom_cb(data):
     path_pub.publish(path)
 
 def newCoordinate():
+    """
+    Returns a set of new waypoint coordinates
+    """
     global coordinates
     x, y = coordinates[0][0], coordinates[0][1]
     if (len(coordinates) != 1):
@@ -53,6 +63,11 @@ def newCoordinate():
     return x, y
 
 def resetOdom(msg):
+    """
+    Resets odometry position to [0, 0 ,0] and orientation to [0, 0, 0, 1]
+
+    Currently not working at intended because odometry data gets overwritten after publishing
+    """
     # global newSub
     reset_odom = rospy.Publisher('/jackal_velocity_controller/odom', Odometry, queue_size=10)
     # reset_odom = rospy.Publisher('/jackal_velocity_controller/odom', Empty, queue_size=10)
@@ -78,7 +93,9 @@ def resetOdom(msg):
     # newSub.unregister()
     
 def newOdom(msg):
-    # print("in odom")
+    """
+    Updates x y coordinates based on odometry data, and calculates theta from quaternion
+    """
     global x
     global y
     global theta
@@ -89,12 +106,14 @@ def newOdom(msg):
     rot_q = msg.pose.pose.orientation
     (roll, pitch, theta) = euler_from_quaternion([rot_q.x, rot_q.y, rot_q.z, rot_q.w])
 
-def drive():
-    # rospy.init_node("speed_controller")
 
+def drive():
+    """
+    Personal waypoint algorithm. This function is doo doo, do not use
+    """
+    
     rospy.init_node("speed_controller")
 
-    # resetOdom("df")
     # global resetSub
     # resetSub = rospy.Subscriber("/odometry/filtered", Odometry, resetOdom) 
     
@@ -149,27 +168,59 @@ def drive():
         pub.publish(speed)
         r.sleep()
 
-def move_base_drive():
-    rospy.init_node("speed_controller")
-    client = actionlib.SimpleActionClient('/jackal/move_base', MoveBaseAction)
-    print("ping")
-    client.wait_for_server()
-    print("server done")
-    
-    goal = MoveBaseGoal()
-    goal.target_pose.header.frame_id = "map"
-    goal.target_pose.header.stamp = rospy.Time.now()
-    goal.target_pose.pose.position.x = 0.5
-    goal.target_pose.pose.orientation.w = 1.0
 
-    client.send_goal(goal)
+def move_base_drive():
+    """
+    Waypoint navigation with move_base
+    """
+
+    rospy.init_node("speed_controller")
+    client = actionlib.SimpleActionClient('move_base', MoveBaseAction)
+    print("connecting to server...")
+    client.wait_for_server()
+    print("server connected")
+    
+    sub = rospy.Subscriber("/odometry/filtered", Odometry, newOdom)
+    odom_sub = rospy.Subscriber('/odometry/filtered', Odometry, odom_cb)
+
+    while (True):
+        goalx, goaly = newCoordinate()
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "odom"
+        goal.target_pose.header.stamp = rospy.Time.now()
+        goal.target_pose.pose.position.x = goalx
+        goal.target_pose.pose.position.y = goaly
+        goal.target_pose.pose.orientation.w = 1.0
+
+
+        # poseSt = PoseStamped()
+        # poseSt.header.stamp = rospy.Time.now()
+        # poseSt.header.frame_id = "odom"
+        # poseSt.pose.position.x = 5
+        # poseSt.pose.position.y = 3
+        # poseSt.pose.orientation.w = 1
+        # pub = rospy.Publisher("/move_base_simple/goal", PoseStamped, queue_size = 10)
+        # pub.publish(poseSt)
+
+        print("setting new waypoint to " + "(" + str(goalx) + ", " + str(goaly) + ")")
+        client.send_goal(goal)
+
+        while (abs(goalx - x) > .3 or abs(goaly - y) > .3):
+            print("goal x: " + str(goalx))
+            print("goal y: " + str(goaly))
+            print("x: " + str(x))
+            print("y: " + str(y))
+            continue
+
+    '''
     wait = client.wait_for_result()
+    print("wait done")
     if not wait:
         rospy.logerr("Action server not available!")
         rospy.signal_shutdown("Action server not available!")
     else:
         return client.get_result() 
-
+    '''
 
 
 def main():
