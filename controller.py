@@ -6,6 +6,8 @@ from geometry_msgs.msg import Point, Twist, PoseStamped
 from math import atan2
 from std_msgs.msg import Empty
 from time import time
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+import actionlib
 
 x = 0.0
 y = 0.0
@@ -119,6 +121,8 @@ def drive():
         print("y: " + str(y)) 
 
         angle_to_goal = atan2(inc_y, inc_x)
+        angle_to_goal = min(angle_to_goal, 3.14 - angle_to_goal)
+        
         print("angle_to_goal: " + str(angle_to_goal))
         print("theta: " + str(theta))
 
@@ -145,9 +149,33 @@ def drive():
         pub.publish(speed)
         r.sleep()
 
+def move_base_drive():
+    rospy.init_node("speed_controller")
+    client = actionlib.SimpleActionClient('/jackal/move_base', MoveBaseAction)
+    print("ping")
+    client.wait_for_server()
+    print("server done")
+    
+    goal = MoveBaseGoal()
+    goal.target_pose.header.frame_id = "map"
+    goal.target_pose.header.stamp = rospy.Time.now()
+    goal.target_pose.pose.position.x = 0.5
+    goal.target_pose.pose.orientation.w = 1.0
+
+    client.send_goal(goal)
+    wait = client.wait_for_result()
+    if not wait:
+        rospy.logerr("Action server not available!")
+        rospy.signal_shutdown("Action server not available!")
+    else:
+        return client.get_result() 
+
+
+
 def main():
     # generateGraphCoordinates("sine incr")
-    drive()
+    # drive()
+    move_base_drive()
 
 if __name__ == "__main__":
     main()
