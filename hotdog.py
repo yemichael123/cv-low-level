@@ -1,5 +1,6 @@
 import rospy
 from nav_msgs.msg import Odometry
+from std_msgs.msg import Float64
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Point, Twist
 from math import atan2
@@ -8,9 +9,11 @@ global movementPredThres = 50
 global speedPub = rospy.Publisher("/jackal_velocity_control/cmd_vel", Twist, queue_size = 1)
 global speed = Twist()
 
+roadPercentage = 0
 
-def getPredVal():
-
+def getPredVal(msg):
+	global roadPercentage
+	roadPercentage = msg.data
 
 
 def adjust_movement(x, y) :
@@ -27,9 +30,13 @@ def velocity_control(moveForward):
 
 def main():
 	# may have to replace while(true) with some rate limit
-	moveForwardOld = getPredVal() > movementPresThres
+	global roadPercentage
+
+    sub = rospy.Subscriber("/cv_nav/road_percentage", Float64, getPredVal)
+
+	moveForwardOld = roadPercentage > movementPresThres
 	while(True):
-		moveForwardNew = getPredVal() > movementPresThres
+		moveForwardNew = oradPercentage > movementPresThres
 		if (moveForwardOld != moveForwardNew):
 			velocity_control(moveForwardNew)
 		moveForwardOld = moveForwardNew
