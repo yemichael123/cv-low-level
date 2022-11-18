@@ -41,7 +41,7 @@ def main():
     r = rospy.Rate(40)
     #moveForwardOld = roadPercentage > movementPredThres
     #velocity_control(True)
-    while(True):
+    while not rospy.is_shutdown():
         # print(f"in while pred value: {roadPercentage}")
         #moveForwardNew = roadPercentage > movementPredThres
         #if (moveForwardOld != moveForwardNew):
