@@ -5,7 +5,7 @@ from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Point, Twist
 from math import atan2
 
-movementPredThres = 50
+movementPredThres = .5
 speedPub = rospy.Publisher("/jackal_velocity_controller/cmd_vel", Twist, queue_size = 10)
 speed = Twist()
 
@@ -13,7 +13,7 @@ roadPercentage = 0
 
 def getPredVal(msg):
     global roadPercentage
-    print(f"pred value: {msg.data}")
+    print("pred value: " + str(msg.data))
     roadPercentage = msg.data
 
 def adjust_movement(x, y):
@@ -21,7 +21,7 @@ def adjust_movement(x, y):
     global speedPub
     speed.linear.x = x
     speed.angular.z = y
-    print(f"velocity set to: {x}, {y}")
+    print("velocity set to: " + str(x) + ", " + str(y))
     speedPub.publish(speed)
 
 def velocity_control(moveForward):
@@ -45,9 +45,11 @@ def main():
         # print(f"in while pred value: {roadPercentage}")
         #moveForwardNew = roadPercentage > movementPredThres
         #if (moveForwardOld != moveForwardNew):
+        print("current pred val " + str(roadPercentage))
         moveForward = roadPercentage > movementPredThres
         velocity_control(moveForward)
         #moveForwardOld = moveForwardNew
+        r.sleep()
 
 if __name__ == "__main__":
     main()
