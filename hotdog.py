@@ -7,19 +7,34 @@ from math import atan2
 import math
 import numpy as np
 
-movementPredThres = .5
+movementPredThres = 75
 speedPub = rospy.Publisher("/jackal_velocity_controller/cmd_vel", Twist, queue_size = 10)
 speed = Twist()
 
-roadPercentage = 0.0
+forwardRoadPercentage = 0
+rotateRoadPercentage = 0
+leftRoadPercentage = 0
+rightRoadPercentage = 0
+
 x = 0.0
 y = 0.0
 theta = 0.0
 
-def getPredVal(msg):
-    global roadPercentage
-    print("pred value: " + str(msg.data))
-    roadPercentage = msg.data
+def getForwardPercent(msg):
+    global forwardRoadPercentage
+    forwardRoadPercentage = msg.data
+
+def getRotatePercent(msg):
+    global rotateRoadPercentage
+    rotateRoadPercentage = msg.data
+
+def getRightPercent(msg):
+    global rightRoadPercentage
+    rightRoadPercentage = msg.data
+
+def getLeftPercent(msg):
+    global leftRoadPercentage
+    leftRoadPercentage = msg.data
 
 def adjust_movement(x, y):
     global speed
@@ -61,25 +76,28 @@ def rotate_within_bounds(lowerBound, upperBound, rotateDirection, initialSess):
 def main():
     rospy.init_node("cv_low_level")
     # may have to replace while(true) with some rate limit
-    global roadPercentage
+    global forwardRoadPercentage
     global movementPredThres
     global theta
 
     boundRotation = True
 
-    predSub = rospy.Subscriber("/cv_nav/road_percentage", Float64, getPredVal)
+    forwardSub = rospy.Subscriber("/cv_nav/road_percentage/forward", Float64, getForwardPercent)
+    rotateSub = rospy.Subscriber("/cv_nav/road_percentage/rotate", Float64, getRotatePercent)
+    rightSub = rospy.Subscriber("/cv_nav/road_percentage/right", Float64, getRightPercent)
+    leftSub = rospy.Subscriber("/cv_nav/road_percentage/left", Float64, getLeftPercent)
+
     odomSub = rospy.Subscriber("/odometry/filtered", Odometry, newOdom)
     r = rospy.Rate(40)
 
     while not rospy.is_shutdown():
-
-        print("current pred val " + str(roadPercentage))
-        moveForward = roadPercentage > movementPredThres
+        print("current pred val " + str(forwardRoadPercentage))
+        moveForward = forwardRoadPercentage > movementPredThres
         if (boundRotation and not moveForward):
             lowerBound = np.arctan2(np.sin(theta - math.pi / 2), np.cos(theta - math.pi / 2))
             upperBound = np.arctan2(np.sin(theta + math.pi / 2), np.cos(theta + math.pi / 2))
             initialTheta = theta
-            rotateDirection = -1
+            rotateDirection = -1 if rightRoadPercentage > leftRoadPercentage else 1 # CW if right side has more road, else CCW
             initialSess = True
             while not rospy.is_shutdown():
                 print("lower bound: " + str(lowerBound))
@@ -90,13 +108,10 @@ def main():
                 if (theta < lowerBound or theta > upperBound):
                     rotateDirection *= -1
                     initialSess = False
-                if roadPercentage > movementPredThres:
+                if rotateRoadPercentage > movementPredThres:
                     break
-
         else:
             velocity_control(moveForward)
-
-
         r.sleep()
 
 if __name__ == "__main__":
