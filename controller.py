@@ -14,11 +14,25 @@ x = 0.0
 y = 0.0
 theta = 0.0
 
-coordinates = [[0,3], [3, 3], [3,0], [0, 0]]
 
 resetSub = None
 
 path = Path()
+
+# Set to true if running coordinates from Astar
+runningAStar = False
+
+coordinates = [[0,3], [3, 3], [3,0], [0, 0]]
+
+if runningAStar:
+    # open file containing coordinates
+    f = open('coordinates.txt', 'r')
+    textStr = f.read()
+    coordinates = []
+    for coordStr in textStr.splitlines():
+        x, y = coordStr.split()
+        coordinates.append([y, x])
+
 
 
 def generateGraphCoordinates(graph):
@@ -57,10 +71,15 @@ def newCoordinate():
     Returns a set of new waypoint coordinates
     """
     global coordinates
-    x, y = coordinates[0][0], coordinates[0][1]
+    global x
+    global y
+    goalX, goalY = coordinates[0][0], coordinates[0][1]
     if (len(coordinates) != 1):
         coordinates = coordinates[1:]
-    return x, y
+    if runningAStar:
+        else if (((x - goalX)**2 + (y - goalY)**2)**(1/2)) < 1:
+            return newCoordinate()
+    return goalX, goalY
 
 def resetOdom(msg):
     """
