@@ -12,7 +12,8 @@ speedPub = rospy.Publisher("/jackal_velocity_controller/cmd_vel", Twist, queue_s
 speed = Twist()
 
 forwardRoadPercentage = 0
-rotateRoadPercentage = 0
+rotateLeftRoadPercentage = 0
+rotateRightRoadPercentage = 0
 leftRoadPercentage = 0
 rightRoadPercentage = 0
 
@@ -24,17 +25,22 @@ def getForwardPercent(msg):
     global forwardRoadPercentage
     forwardRoadPercentage = msg.data
 
-def getRotatePercent(msg):
-    global rotateRoadPercentage
-    rotateRoadPercentage = msg.data
+def getRotateLeftPercent(msg):
+    global rotateLeftRoadPercentage
+    rotateLeftRoadPercentage = msg.data
+
+def getRotateRightPercent(msg):
+    global rotateRightRoadPercentage
+    rotateRightRoadPercentage = msg.data
+
+def getLeftPercent(msg):
+    global leftRoadPercentage
+    leftRoadPercentage = msg.data
 
 def getRightPercent(msg):
     global rightRoadPercentage
     rightRoadPercentage = msg.data
 
-def getLeftPercent(msg):
-    global leftRoadPercentage
-    leftRoadPercentage = msg.data
 
 def adjust_movement(x, y):
     global speed
@@ -45,7 +51,8 @@ def adjust_movement(x, y):
     speedPub.publish(speed)
 
 def velocity_control(moveForward):
-    adjust_movement(.2 if moveForward else 0, 0 if moveForward else .2)
+    rotateDirection = -1 if rotateRightRoadPercentage > rotateLeftRoadPercentage else 1 # CW if right side has more road, else CCW
+    adjust_movement(.2 if moveForward else 0, 0 if moveForward else rotateDirection * .2)
 
 def newOdom(msg):
     """
@@ -66,9 +73,9 @@ def rotate_within_bounds(lowerBound, upperBound, rotateDirection, initialSess):
         adjust_movement(0, rotateDirection * .2)
         if (initialSess and (theta > upperBound or theta < lowerBound)):
             break
-        if (rotateDirection == 1 and theta > upperBound): # if moving clockwise, it can pass the lowerbound but not upper bound
+        if (rotateDirection == -1 and theta > upperBound): # if moving clockwise, it can pass the lowerbound but not upper bound
             break
-        if (rotateDirection == -1 and theta < lowerBound): # if moving counter clockwise, it can pass the upperbound but not lower bound
+        if (rotateDirection == 1 and theta < lowerBound): # if moving counter clockwise, it can pass the upperbound but not lower bound
             break
 
 
@@ -97,7 +104,7 @@ def main():
             lowerBound = np.arctan2(np.sin(theta - math.pi / 2), np.cos(theta - math.pi / 2))
             upperBound = np.arctan2(np.sin(theta + math.pi / 2), np.cos(theta + math.pi / 2))
             initialTheta = theta
-            rotateDirection = -1 if rightRoadPercentage > leftRoadPercentage else 1 # CW if right side has more road, else CCW
+            rotateDirection = -1 if rotateRightRoadPercentage > rotateLeftRoadPercentage else 1 # CW if right side has more road, else CCW
             initialSess = True
             while not rospy.is_shutdown():
                 print("lower bound: " + str(lowerBound))
@@ -108,7 +115,7 @@ def main():
                 if (theta < lowerBound or theta > upperBound):
                     rotateDirection *= -1
                     initialSess = False
-                if rotateRoadPercentage > movementPredThres:
+                if (rotateLeftRoadPercentage + rotateRightRoadPercentage) / 2 > movementPredThres:
                     break
         else:
             velocity_control(moveForward)

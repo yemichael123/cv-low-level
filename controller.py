@@ -31,6 +31,7 @@ if runningAStar:
     coordinates = []
     for coordStr in textStr.splitlines():
         x, y = coordStr.split()
+        x, y = (x - 30) / 10, (y - 60) / 10
         coordinates.append([y, x])
 
 
