@@ -7,7 +7,7 @@ from math import atan2
 from std_msgs.msg import Empty
 from time import time
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
-
+import time
 import actionlib
 
 x = 0.0
@@ -20,7 +20,7 @@ resetSub = None
 path = Path()
 
 # Set to true if running coordinates from Astar
-runningAStar = False
+runningAStar = True
 
 coordinates = [[0,3], [3, 3], [3,0], [0, 0]]
 
@@ -31,8 +31,10 @@ if runningAStar:
     coordinates = []
     for coordStr in textStr.splitlines():
         x, y = coordStr.split()
+        x, y = float(x), float(y)
         x, y = (x - 30) / 10, (y - 60) / 10
-        coordinates.append([y, x])
+        print("going to " + str(x) + ", " + str(y))
+        coordinates.append([-y,-x])
 
 
 
@@ -77,8 +79,8 @@ def newCoordinate():
     goalX, goalY = coordinates[0][0], coordinates[0][1]
     if (len(coordinates) != 1):
         coordinates = coordinates[1:]
-    if runningAStar:
-        else if (((x - goalX)**2 + (y - goalY)**2)**(1/2)) < 1:
+    if (runningAStar):
+        if ((((x - goalX)**2 + (y - goalY)**2)**(1/2)) < 1):
             return newCoordinate()
     return goalX, goalY
 
