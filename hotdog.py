@@ -6,6 +6,7 @@ from geometry_msgs.msg import Point, Twist
 from math import atan2
 import math
 import numpy as np
+import time
 
 movementPredThres = 75
 speedPub = rospy.Publisher("/jackal_velocity_controller/cmd_vel", Twist, queue_size = 10)
@@ -51,8 +52,14 @@ def adjust_movement(x, y):
     speedPub.publish(speed)
 
 def velocity_control(moveForward):
-    rotateDirection = -1 if rotateRightRoadPercentage > rotateLeftRoadPercentage else 1 # CW if right side has more road, else CCW
-    adjust_movement(.2 if moveForward else 0, 0 if moveForward else rotateDirection * .2)
+    if (moveForward):
+        adjust_movement(.2, 0)
+    else:
+        rotateDirection = -1 if rotateRightRoadPercentage > rotateLeftRoadPercentage else 1 # CW if right side has more road, else CCW
+        t_end = time.time() + 2
+        while time.time() < t_end:
+            adjust_movement(0, 0 if moveForward else rotateDirection * .2)
+
 
 def newOdom(msg):
     """
@@ -87,10 +94,11 @@ def main():
     global movementPredThres
     global theta
 
-    boundRotation = True
+    boundRotation = False
 
     forwardSub = rospy.Subscriber("/cv_nav/road_percentage/forward", Float64, getForwardPercent)
-    rotateSub = rospy.Subscriber("/cv_nav/road_percentage/rotate", Float64, getRotatePercent)
+    rotateRightSub = rospy.Subscriber("/cv_nav/road_percentage/rotateRight", Float64, getRotateRightPercent)
+    rotateLeftSub = rospy.Subscriber("/cv_nav/road_percentage/rotateLeft", Float64, getRotateLeftPercent)
     rightSub = rospy.Subscriber("/cv_nav/road_percentage/right", Float64, getRightPercent)
     leftSub = rospy.Subscriber("/cv_nav/road_percentage/left", Float64, getLeftPercent)
 
