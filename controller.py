@@ -3,10 +3,11 @@ import numpy as np
 from nav_msgs.msg import Odometry, Path
 from tf.transformations import euler_from_quaternion
 from geometry_msgs.msg import Point, Twist, PoseStamped
-from math import atan2
+from math import atan2, sqrt
 from std_msgs.msg import Empty
 from time import time
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
+from actionlib_msgs.msg import GoalStatusArray
 import time
 import actionlib
 
@@ -23,6 +24,8 @@ path = Path()
 runningAStar = True
 
 coordinates = [[0,3], [3, 3], [3,0], [0, 0]]
+
+moveBaseStatus = 1
 
 if runningAStar:
     # open file containing coordinates
@@ -80,7 +83,14 @@ def newCoordinate():
     if (len(coordinates) != 1):
         coordinates = coordinates[1:]
     if (runningAStar):
-        if ((((x - goalX)**2 + (y - goalY)**2)**(1/2)) < 1):
+        print(str(x))
+        print(str(y))
+        print(str(goalX))
+        print(str(goalY))
+        print(str(len(coordinates)))
+        distance = sqrt(((x - goalX)**2 + (y - goalY)**2))
+        print("distance: " + str(distance))
+        if (distance < 3):
             return newCoordinate()
     return goalX, goalY
 
@@ -190,6 +200,9 @@ def drive():
         pub.publish(speed)
         r.sleep()
 
+def moveBase_status_update(msg):
+    global moveBase_status
+    moveBase_status = msg.status_list[-1].status
 
 def move_base_drive():
     """
@@ -204,7 +217,7 @@ def move_base_drive():
     
     sub = rospy.Subscriber("/odometry/filtered", Odometry, newOdom)
     odom_sub = rospy.Subscriber('/odometry/filtered', Odometry, odom_cb)
-
+    status_sub = rospy.Subscriber('move_base/status', GoalStatusArray, moveBase_status_update)
     while (True):
         goalx, goaly = newCoordinate()
         goal = MoveBaseGoal()
@@ -227,11 +240,12 @@ def move_base_drive():
         print("setting new waypoint to " + "(" + str(goalx) + ", " + str(goaly) + ")")
         client.send_goal(goal)
 
-        while (abs(goalx - x) > .3 or abs(goaly - y) > .3):
-            print("goal x: " + str(goalx))
-            print("goal y: " + str(goaly))
-            print("x: " + str(x))
-            print("y: " + str(y))
+        #while (abs(goalx - x) > .4 or abs(goaly - y) > .4):
+        while ((sqrt((x - goalx)**2 + (y - goaly)**2)) > .5):
+            #print("goal x: " + str(goalx))
+            #print("goal y: " + str(goaly))
+            #print("x: " + str(x))
+            #print("y: " + str(y))
             continue
 
     '''
