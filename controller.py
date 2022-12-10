@@ -10,6 +10,10 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
 from actionlib_msgs.msg import GoalStatusArray
 import time
 import actionlib
+import sys, threading
+
+sys.setrecursionlimit(10**7) # max depth of recursion
+threading.stack_size(2**27)  # new thread will get stack of such size
 
 x = 0.0
 y = 0.0
